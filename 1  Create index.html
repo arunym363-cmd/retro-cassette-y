@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RetroAudioLoader - ഓഡിയോ സിഗ്നൽ പ്രൊജക്റ്റ്</title>
+    <style>
+        body {
+            background-color: #0b0b0b;
+            color: #00ffcc;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        h2 {
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 18px;
+            text-shadow: 0 0 5px #00ffcc;
+        }
+        .cassette {
+            width: 240px;
+            height: 150px;
+            background: #1a1a1a;
+            border: 4px solid #333;
+            border-radius: 12px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+            margin-bottom: 20px;
+        }
+        .reel-container {
+            display: flex;
+            gap: 40px;
+            background: #0d0d0d;
+            padding: 12px 24px;
+            border-radius: 6px;
+            border: 2px dashed #444;
+        }
+        .reel {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #00ffcc;
+            border-radius: 50%;
+        }
+        .spinning {
+            animation: spin 1.5s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            max-width: 320px;
+            background: #161616;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        input[type="file"], input[type="text"] {
+            background: #000;
+            color: #00ffcc;
+            border: 1px solid #00ffcc;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background: #00ffcc;
+            color: #0b0b0b;
+            border: none;
+            padding: 10px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: monospace;
+        }
+        button:active {
+            background: #008866;
+        }
+        .screen {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 320px;
+            min-height: 180px;
+            background: #000;
+            border: 2px solid #00ffcc;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 10px;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+        }
+        canvas {
+            max-width: 100%;
+            height: auto;
+            image-rendering: pixelated;
+            filter: contrast(150%) brightness(120%);
+        }
+        .status {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>RetroAudioLoader - കാസറ്റ് സിഗ്നൽ</h2>
+
+    <div class="cassette">
+        <div class="reel-container">
+            <div class="reel" id="leftReel"></div>
+            <div class="reel" id="rightReel"></div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <label class="status">ചിത്രം തിരഞ്ഞെടുക്കുക:</label>
+        <input type="file" id="imageInput" accept="image/*">
+        <input type="text" id="msgInput" placeholder="രഹസ്യ സന്ദേശം ടൈപ്പ് ചെയ്യുക...">
+        <button onclick="playAudioSignal()">ഓഡിയോ സിഗ്നൽ പ്ലേ ചെയ്യുക</button>
+    </div>
+
+    <div class="screen">
+        <div id="statusText" class="status">സിഗ്നലിനായി കാത്തിരിക്കുന്നു...</div>
+        <canvas id="outputCanvas"></canvas>
+    </div>
+
+    <script>
+        let selectedImageData = null;
+
+        document.getElementById('imageInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = 100;
+                        canvas.height = 75;
+                        ctx.drawImage(img, 0, 0, 100, 75);
+                        selectedImageData = canvas.toDataURL();
+                        document.getElementById('statusText').innerText = "ചിത്രം ഓഡിയോയിലേക്ക് മാറ്റാൻ തയ്യാർ!";
+                    }
+                    img.src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function playAudioSignal() {
+            const leftReel = document.getElementById('leftReel');
+            const rightReel = document.getElementById('rightReel');
+            const statusText = document.getElementById('statusText');
+            const canvas = document.getElementById('outputCanvas');
+            const ctx = canvas.getContext('2d');
+            const msg = document.getElementById('msgInput').value;
+
+            // കാസറ്റ് റീൽ കറങ്ങുന്നു
+            leftReel.classList.add('spinning');
+            rightReel.classList.add('spinning');
+            statusText.innerText = "ഓഡിയോ സിഗ്നൽ പ്ലേ ആകുന്നു & ഡീകോഡ് ചെയ്യുന്നു...";
+
+            // Web Audio API ഉപയോഗിച്ച് റെട്രോ കാസറ്റ് സൗണ്ട് (Beeper/Modem tone) ഉണ്ടാക്കുന്നു
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 3);
+                
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 3);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 3);
+            } catch(e) {
+                console.log("Audio not supported");
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (selectedImageData) {
+                const img = new Image();
+                img.onload = function() {
+                    let currentHeight = 0;
+                    canvas.width = 160;
+                    canvas.height = 120;
+                    
+                    // ഓഡിയോ സിഗ്നലിനൊപ്പം മുകളിൽ നിന്ന് താഴേക്ക് ചിത്രം സ്കാൻ ചെയ്ത് ലോഡ് ആകുന്നത്
+                    let loadInterval = setInterval(() => {
+                        ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, canvas.width, canvas.height);
+                        ctx.fillStyle = "rgba(0, 255, 204, 0.2)";
+                        ctx.fillRect(0, currentHeight, canvas.width, 6);
+                        
+                        currentHeight += 4;
+                        if (currentHeight > canvas.height) {
+                            clearInterval(loadInterval);
+                            leftReel.classList.remove('spinning');
+                            rightReel.classList.remove('spinning');
+                            statusText.innerText = msg ? "സന്ദേശം: " + msg : "സിഗ്നൽ ട്രാൻസ്മിഷൻ വിജയം!";
+                        }
+                    }, 60);
+                }
+                img.src = selectedImageData;
+            } else {
+                canvas.width = 280;
+                canvas.height = 80;
+                ctx.font = "14px Courier New";
+                ctx.fillStyle = "#00ffcc";
+                let textToShow = msg ? msg : "ഇമേജ് നൽകിയിട്ടില്ല, സൗണ്ട് സിഗ്നൽ മാത്രം!";
+                let charIndex = 0;
+                
+                let textInterval = setInterval(() => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillText(textToShow.substring(0, charIndex), 10, 40);
+                    charIndex++;
+                    if (charIndex > textToShow.length) {
+                        clearInterval(textInterval);
+                        leftReel.classList.remove('spinning');
+                        rightReel.classList.remove('spinning');
+                        statusText.innerText = "പ്ലേ പൂർത്തിയായി.";
+                    }
+                }, 80);
+            }
+        }
+    </script>
+</body>
+</html>
